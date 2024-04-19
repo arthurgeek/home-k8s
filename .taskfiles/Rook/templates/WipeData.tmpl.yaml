@@ -1,0 +1,23 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ${job}
+  namespace: default
+spec:
+  restartPolicy: Never
+  nodeName: ${node}
+  volumes:
+    - name: rook-data-dir
+      hostPath:
+        path: /var/lib/rook
+  containers:
+    - name: main
+      image: busybox
+      securityContext:
+        privileged: true
+      volumeMounts:
+        - name: rook-data-dir
+          mountPath: /node/rook-data
+      resources: {}
+      command: ["/bin/sh", "-c", "rm -rf /node/rook-data/*"]

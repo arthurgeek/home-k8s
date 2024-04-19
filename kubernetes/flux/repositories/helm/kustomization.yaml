@@ -8,6 +8,8 @@ resources:
   - ./cloudnative-pg.yaml
   - ./external-dns.yaml
   - ./external-secrets.yaml
+  - ./fairwinds.yaml
+  - ./grafana.yaml
   - ./ingress-nginx.yaml
   - ./k8s-gateway.yaml
   - ./jetstack.yaml
@@ -15,6 +17,8 @@ resources:
   - ./openebs.yaml
   - ./piraeus.yaml
   - ./postfinance.yaml
+  - ./prometheus-community.yaml
   - ./rook-ceph.yaml
   - ./spegel.yaml
   - ./stakater.yaml
+  - ./stevehipwell.yaml

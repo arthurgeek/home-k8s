@@ -1,0 +1,56 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/postgresql.cnpg.io/cluster_v1.json
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: grafana-db
+  namespace: default
+spec:
+  instances: 2
+  primaryUpdateStrategy: unsupervised
+  storage:
+    size: 2Gi
+  resources:
+    requests:
+      memory: 200Mi
+      cpu: 200m
+    limits:
+      memory: 500Mi
+  monitoring:
+    enablePodMonitor: true
+  bootstrap:
+    initdb:
+      database: &app grafana
+      owner: *app
+      dataChecksums: true
+  nodeMaintenanceWindow:
+    inProgress: false
+    reusePVC: true
+  backup:
+    retentionPolicy: 30d
+    barmanObjectStore:
+      data:
+        compression: bzip2
+      wal:
+        compression: bzip2
+        maxParallel: 8
+      destinationPath: "s3://postgres"
+      endpointURL: "http://minio.storage.svc.cluster.local:9000"
+      s3Credentials:
+        accessKeyId:
+          name: grafana-s3-secret
+          key: S3_ACCESS_KEY
+        secretAccessKey:
+          name: grafana-s3-secret
+          key: S3_SECRET_KEY
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/postgresql.cnpg.io/scheduledbackup_v1.json
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: grafana-backup
+spec:
+  schedule: "0 0 0 * * *"
+  backupOwnerReference: self
+  cluster:
+    name: grafana-db

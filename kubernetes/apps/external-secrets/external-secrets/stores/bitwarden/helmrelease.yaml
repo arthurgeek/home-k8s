@@ -1,0 +1,70 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s/helm-charts/app-template-3.1.0/charts/other/app-template/schemas/helmrelease-helm-v2beta2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2beta2
+kind: HelmRelease
+metadata:
+  name: bitwarden
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: app-template
+      version: 3.1.0
+      sourceRef:
+        kind: HelmRepository
+        name: bjw-s
+        namespace: flux-system
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      strategy: rollback
+      retries: 3
+  values:
+    controllers:
+      bitwarden:
+        strategy: RollingUpdate
+        annotations:
+          reloader.stakater.com/auto: "true"
+
+        containers:
+          cli:
+            image:
+              repository: ghcr.io/larivierec/bitwarden-cli
+              tag: 2024.3.1@sha256:4205c5377ddebd5f0c75dc80413b0efff88946a37f620f73ce4d5dad3fb5f4f1
+            envFrom:
+              - secretRef:
+                  name: bitwarden-cli
+            probes:
+              liveness:
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command:
+                      [
+                        "sh",
+                        "-c",
+                        "curl -X POST -s http://127.0.0.1:8087/sync | jq -e '.success == true'",
+                      ]
+                  initialDelaySeconds: 15
+                  timeoutSeconds: 5
+                  periodSeconds: 30
+                  failureThreshold: 3
+
+              readiness:
+                enabled: false
+
+            resources:
+              requests:
+                cpu: 10m
+              limits:
+                memory: 256M
+    service:
+      cli:
+        controller: bitwarden
+        ports:
+          http:
+            port: 8087

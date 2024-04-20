@@ -1,0 +1,70 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/postgresql.cnpg.io/cluster_v1.json
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: immich-db
+spec:
+  instances: 2
+  imageName: ghcr.io/tensorchord/cloudnative-pgvecto.rs:15.6-v0.2.1
+  primaryUpdateStrategy: unsupervised
+  enableSuperuserAccess: true
+  storage:
+    size: 5Gi
+  resources:
+    requests:
+      memory: 200Mi
+      cpu: 200m
+    limits:
+      memory: 500Mi
+  monitoring:
+    enablePodMonitor: true
+  bootstrap:
+    recovery:
+      source: &previousCluster immich-db-v3
+      database: &app immich
+      owner: *app
+  postgresql:
+    shared_preload_libraries:
+      - "vectors.so"
+  backup:
+    retentionPolicy: 30d
+    barmanObjectStore:
+      data:
+        compression: bzip2
+      wal:
+        compression: bzip2
+        maxParallel: 8
+      destinationPath: "s3://postgres"
+      endpointURL: "http://minio.storage.svc.cluster.local:9000"
+      serverName: immich-db-v4
+      s3Credentials:
+        accessKeyId:
+          name: immich-s3-secret
+          key: S3_ACCESS_KEY
+        secretAccessKey:
+          name: immich-s3-secret
+          key: S3_SECRET_KEY
+  externalClusters:
+    - name: *previousCluster
+      barmanObjectStore:
+        destinationPath: "s3://postgres"
+        endpointURL: "http://minio.storage.svc.cluster.local:9000"
+        s3Credentials:
+          accessKeyId:
+            name: immich-s3-secret
+            key: S3_ACCESS_KEY
+          secretAccessKey:
+            name: immich-s3-secret
+            key: S3_SECRET_KEY
+
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: immich-backup
+spec:
+  schedule: "0 0 0 * * *"
+  backupOwnerReference: self
+  cluster:
+    name: immich-db

@@ -1,0 +1,40 @@
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: media
+provisioner: nfs
+parameters:
+  archiveOnDelete: "false"
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: media
+spec:
+  storageClassName: media
+  capacity:
+    storage: 1Mi # doesn't matter
+  accessModes:
+    - ReadOnlyMany
+  persistentVolumeReclaimPolicy: Retain
+  nfs:
+    server: "${SECRET_NAS_HOST}"
+    path: "${SECRET_MEDIA_PATH}"
+  mountOptions:
+    - nfsvers=4.1
+    - nconnect=8
+    - hard
+    - noatime
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: media
+spec:
+  accessModes:
+    - ReadOnlyMany
+  storageClassName: media
+  resources:
+    requests:
+      storage: 1Mi # doesn't matter

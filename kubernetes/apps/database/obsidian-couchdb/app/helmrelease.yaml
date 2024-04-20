@@ -1,0 +1,115 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/helm.toolkit.fluxcd.io/helmrelease_v2beta2.json
+apiVersion: helm.toolkit.fluxcd.io/v2beta2
+kind: HelmRelease
+metadata:
+  name: obsidian-couchdb
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: app-template
+      version: 3.1.0
+      sourceRef:
+        kind: HelmRepository
+        name: bjw-s
+        namespace: flux-system
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      strategy: rollback
+      retries: 3
+  values:
+    controllers:
+      obsidian-couchdb:
+        annotations:
+          reloader.stakater.com/auto: "true"
+
+        initContainers:
+          init-config:
+            image:
+              repository: public.ecr.aws/docker/library/busybox
+              tag: latest@sha256:c3839dd800b9eb7603340509769c43e146a74c63dca3045a8e7dc8ee07e53966
+            command:
+              - "sh"
+              - "-c"
+              - "cp /tmp/config/*.ini /opt/couchdb/etc/default.d/; ls -lrt /opt/couchdb/etc/default.d;"
+
+        containers:
+          app:
+            image:
+              repository: public.ecr.aws/docker/library/couchdb
+              tag: 3.3.3
+            env:
+              COUCHDB_USER:
+                valueFrom:
+                  secretKeyRef:
+                    name: obsidian-couchdb-secret
+                    key: couchdb-user
+              COUCHDB_PASSWORD:
+                valueFrom:
+                  secretKeyRef:
+                    name: obsidian-couchdb-secret
+                    key: couchdb-password
+
+            probes:
+              liveness:
+                enabled: true
+              readiness:
+                enabled: true
+              startup:
+                enabled: true
+                spec:
+                  failureThreshold: 30
+                  periodSeconds: 5
+
+            resources:
+              requests:
+                cpu: 34m
+                memory: 127M
+              limits:
+                memory: 325M
+
+    service:
+      app:
+        controller: obsidian-couchdb
+        ports:
+          http:
+            port: 5984
+
+    ingress:
+      app:
+        className: external
+        annotations:
+          external-dns.alpha.kubernetes.io/target: "external.${SECRET_DOMAIN}"
+        hosts:
+          - host: "obsidian-db.${SECRET_DOMAIN}"
+            paths:
+              - path: /
+                service:
+                  identifier: app
+                  port: http
+
+    persistence:
+      config:
+        type: configMap
+        name: obsidian-couchdb-configmap
+        advancedMounts:
+          obsidian-couchdb:
+            init-config:
+              - path: /tmp/config
+
+      data:
+        existingClaim: obsidian-couchdb-data
+        advancedMounts:
+          obsidian-couchdb:
+            app:
+              - path: /opt/couchdb/data
+
+      config-storage:
+        type: emptyDir
+        globalMounts:
+          - path: /opt/couchdb/etc/default.d

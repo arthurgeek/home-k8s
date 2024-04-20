@@ -1,0 +1,17 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/nfd.k8s-sigs.io/nodefeaturerule_v1alpha1.json
+apiVersion: nfd.k8s-sigs.io/v1alpha1
+kind: NodeFeatureRule
+metadata:
+  name: intel-cpu
+spec:
+  rules:
+    # 12th Gen Alder Lake
+    - name: "intel.cpu-gen"
+      labels:
+        "intel.feature.node.kubernetes.io/gen": "12"
+      matchFeatures:
+        - feature: cpu.model
+          matchExpressions:
+            family: { op: In, value: ["6"] }
+            id: { op: In, value: ["151"] }

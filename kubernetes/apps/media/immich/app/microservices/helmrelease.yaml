@@ -1,0 +1,104 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2beta2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2beta2
+kind: HelmRelease
+metadata:
+  name: immich-microservices
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: app-template
+      version: 3.1.0
+      interval: 30m
+      sourceRef:
+        kind: HelmRepository
+        name: bjw-s
+        namespace: flux-system
+
+  maxHistory: 2
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  uninstall:
+    keepHistory: false
+
+  dependsOn:
+    - name: immich-server
+      namespace: media
+
+  values:
+    controllers:
+      immich-microservices:
+        replicas: 1
+        strategy: RollingUpdate
+        annotations:
+          reloader.stakater.com/auto: "true"
+
+        containers:
+          app:
+            image:
+              repository: ghcr.io/immich-app/immich-server
+              tag: v1.100.0@sha256:d603fd34d587cbf0c99442bb44da395450157d5eb7dec40d2d1d16f2cfdb988b
+            command: /bin/sh
+            args:
+              - ./start-microservices.sh
+
+            env:
+              DB_HOSTNAME: "immich-db-rw.media.svc.cluster.local"
+              DB_DATABASE_NAME: "immich"
+              DB_USERNAME:
+                valueFrom:
+                  secretKeyRef:
+                    name: immich-db-app
+                    key: username
+              DB_PASSWORD:
+                valueFrom:
+                  secretKeyRef:
+                    name: immich-db-app
+                    key: password
+
+            envFrom:
+              - secretRef:
+                  name: immich-secret
+              - configMapRef:
+                  name: immich-configmap
+
+    service:
+      app:
+        controller: immich-microservices
+        enabled: false
+
+    defaultPodOptions:
+      securityContext:
+        runAsUser: 1030
+        runAsGroup: 100
+        fsGroup: 100
+        fsGroupChangePolicy: "OnRootMismatch"
+        supplementalGroups: [44, 105]
+
+    persistence:
+      library:
+        type: persistentVolumeClaim
+        existingClaim: photos
+        globalMounts:
+          - path: /usr/src/app/upload
+      transformers-cache:
+        type: emptyDir
+        globalMounts:
+          - path: /usr/src/app/.transformers_cache
+
+    nodeSelector:
+      intel.feature.node.kubernetes.io/gen: "12"
+
+    resources:
+      requests:
+        cpu: 5m
+        memory: 277M
+        gpu.intel.com/i915: 1
+      limits:
+        gpu.intel.com/i915: 1

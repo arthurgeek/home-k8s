@@ -1,0 +1,111 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2beta2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2beta2
+kind: HelmRelease
+metadata:
+  name: plex
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: app-template
+      version: 3.1.0
+      sourceRef:
+        kind: HelmRepository
+        name: bjw-s
+        namespace: flux-system
+  maxHistory: 2
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  uninstall:
+    keepHistory: false
+
+  dependsOn:
+    - name: intel-device-plugin-gpu
+      namespace: kube-system
+    - name: rook-ceph-cluster
+      namespace: rook-ceph
+    - name: volsync
+      namespace: volsync-system
+
+  values:
+    controllers:
+      plex:
+        type: statefulset
+        annotations:
+          reloader.stakater.com/auto: "true"
+
+        containers:
+          app:
+            image:
+              repository: ghcr.io/onedr0p/plex
+              tag: 1.32.8.7639-fb6452ebf@sha256:97bf4a8eac34de4b0df78e4fc3e2b501187161a3a264fa2b220bd51b0f89ba77
+
+            env:
+              TZ: "${TIMEZONE}"
+              PLEX_CLAIM:
+                valueFrom:
+                  secretKeyRef:
+                    name: plex-secret
+                    key: claim
+
+    service:
+      app:
+        controller: plex
+        ports:
+          http:
+            port: 32400
+
+    ingress:
+      main:
+        className: internal
+        annotations:
+          hajimari.io/icon: mdi:plex
+        hosts:
+          - host: "plex.${SECRET_DOMAIN}"
+            paths:
+              - path: /
+                pathType: Prefix
+                service:
+                  identifier: app
+                  port: http
+
+    defaultPodOptions:
+      securityContext:
+        runAsUser: 1030
+        runAsGroup: 100
+        fsGroup: 100
+        fsGroupChangePolicy: "OnRootMismatch"
+        supplementalGroups: [44, 105]
+
+    persistence:
+      config:
+        existingClaim: plex-config
+
+      data:
+        type: persistentVolumeClaim
+        existingClaim: media
+        advancedMounts:
+          plex:
+            app:
+              - path: /data
+                readOnly: true
+
+      transcode:
+        type: emptyDir
+
+    nodeSelector:
+      intel.feature.node.kubernetes.io/gen: "12"
+
+    resources:
+      requests:
+        gpu.intel.com/i915: 1
+        cpu: 300m
+        memory: 6Gi
+      limits:
+        gpu.intel.com/i915: 1

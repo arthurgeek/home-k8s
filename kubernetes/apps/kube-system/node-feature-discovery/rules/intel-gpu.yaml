@@ -1,0 +1,95 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/nfd.k8s-sigs.io/nodefeaturerule_v1alpha1.json
+apiVersion: nfd.k8s-sigs.io/v1alpha1
+kind: NodeFeatureRule
+metadata:
+  name: intel-gpu-device
+spec:
+  rules:
+    - name: "intel.gpu"
+      labels:
+        "intel.feature.node.kubernetes.io/gpu": "true"
+      matchFeatures:
+        - feature: pci.device
+          matchExpressions:
+            vendor: { op: In, value: ["8086"] }
+            class: { op: In, value: ["0300", "0380"] }
+      matchAny:
+        - matchFeatures:
+            - feature: kernel.loadedmodule
+              matchExpressions:
+                i915: { op: Exists }
+        - matchFeatures:
+            - feature: kernel.enabledmodule
+              matchExpressions:
+                i915: { op: Exists }
+        - matchFeatures:
+            - feature: kernel.loadedmodule
+              matchExpressions:
+                xe: { op: Exists }
+        - matchFeatures:
+            - feature: kernel.enabledmodule
+              matchExpressions:
+                xe: { op: Exists }
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/nfd.k8s-sigs.io/nodefeaturerule_v1alpha1.json
+apiVersion: nfd.k8s-sigs.io/v1alpha1
+kind: NodeFeatureRule
+metadata:
+  name: intel-gpu-platform-labeling
+spec:
+  rules:
+    - extendedResources:
+        gpu.intel.com/millicores: "@local.label.gpu.intel.com/millicores"
+        gpu.intel.com/memory.max: "@local.label.gpu.intel.com/memory.max"
+        gpu.intel.com/tiles: "@local.label.gpu.intel.com/tiles"
+      matchFeatures:
+        - feature: local.label
+          matchExpressions:
+            gpu.intel.com/millicores: { op: Exists }
+            gpu.intel.com/memory.max: { op: Exists }
+            gpu.intel.com/tiles: { op: Exists }
+      name: intel.gpu.fractionalresources
+    # generic rule for older and upcoming devices
+    - labelsTemplate: |
+        {{ range .pci.device }}gpu.intel.com/device-id.{{ .class }}-{{ .device }}.present=true
+        {{ end }}
+      matchFeatures:
+        - feature: pci.device
+          matchExpressions:
+            class:
+              op: In
+              value:
+                - "0300"
+                - "0380"
+            vendor:
+              op: In
+              value:
+                - "8086"
+      name: intel.gpu.generic.deviceid
+    - labelsTemplate: gpu.intel.com/device-id.0300-{{ (index .pci.device 0).device }}.count={{ len .pci.device }}
+      matchFeatures:
+        - feature: pci.device
+          matchExpressions:
+            class:
+              op: In
+              value:
+                - "0300"
+            vendor:
+              op: In
+              value:
+                - "8086"
+      name: intel.gpu.generic.count.300
+    - labelsTemplate: gpu.intel.com/device-id.0380-{{ (index .pci.device 0).device }}.count={{ len .pci.device }}
+      matchFeatures:
+        - feature: pci.device
+          matchExpressions:
+            class:
+              op: In
+              value:
+                - "0380"
+            vendor:
+              op: In
+              value:
+                - "8086"
+      name: intel.gpu.generic.count.380

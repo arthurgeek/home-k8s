@@ -9,7 +9,7 @@ spec:
   instances: 2
   primaryUpdateStrategy: unsupervised
   storage:
-    size: 20Gi
+    size: 40Gi
   resources:
     requests:
       memory: 200Mi

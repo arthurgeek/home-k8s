@@ -30,8 +30,8 @@ spec:
       create: true
     monitoring:
       podMonitorEnabled: false
-      grafanaDashboard:
-        create: true
+      # grafanaDashboard:
+      #   create: true
     resources:
       requests:
         cpu: 10m

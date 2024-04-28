@@ -146,3 +146,15 @@ spec:
       enabled: false
     test:
       enabled: false
+
+    chunksCache:
+      resources:
+        requests:
+          cpu: 100m
+          memory: 4800Mi
+
+    resultsCache:
+      resources:
+        requests:
+          cpu: 100m
+          memory: 600Mi

@@ -9,7 +9,7 @@ spec:
   instances: 2
   primaryUpdateStrategy: unsupervised
   storage:
-    size: 40Gi
+    size: 60Gi
   resources:
     requests:
       memory: 200Mi
@@ -19,10 +19,10 @@ spec:
   monitoring:
     enablePodMonitor: true
   bootstrap:
-    initdb:
+    recovery:
+      source: &previousCluster grafana-db-v1
       database: &app grafana
       owner: *app
-      dataChecksums: true
   nodeMaintenanceWindow:
     inProgress: false
     reusePVC: true
@@ -36,6 +36,7 @@ spec:
         maxParallel: 8
       destinationPath: "s3://postgres"
       endpointURL: "http://minio.storage.svc.cluster.local:9000"
+      serverName: grafana-db-v2
       s3Credentials:
         accessKeyId:
           name: grafana-s3-secret
@@ -43,6 +44,18 @@ spec:
         secretAccessKey:
           name: grafana-s3-secret
           key: S3_SECRET_KEY
+  externalClusters:
+    - name: *previousCluster
+      barmanObjectStore:
+        destinationPath: "s3://postgres"
+        endpointURL: "http://minio.storage.svc.cluster.local:9000"
+        s3Credentials:
+          accessKeyId:
+            name: immich-s3-secret
+            key: S3_ACCESS_KEY
+          secretAccessKey:
+            name: immich-s3-secret
+            key: S3_SECRET_KEY
 ---
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/postgresql.cnpg.io/scheduledbackup_v1.json
 apiVersion: postgresql.cnpg.io/v1

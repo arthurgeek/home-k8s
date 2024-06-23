@@ -5,6 +5,4 @@ resources:
   - ./helmrelease.yaml
 labels:
   - pairs:
-      app.kubernetes.io/name: immich-microservices
-      app.kubernetes.io/instance: immich-microservices
       app.kubernetes.io/part-of: immich

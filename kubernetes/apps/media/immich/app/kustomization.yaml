@@ -7,7 +7,6 @@ resources:
   - ./configmap.yaml
   - ./pvc.yaml
   - ./server
-  - ./microservices
   - ./machine-learning
 labels:
   - pairs:

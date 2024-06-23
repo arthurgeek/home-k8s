@@ -41,10 +41,6 @@ spec:
               repository: ghcr.io/immich-app/immich-server
               tag: v1.106.4@sha256:d39cb7ecbcc9924f2c51a3e0deb8a469075996c6ba9e1384eb2ddb550984848e
 
-            command: /bin/sh
-            args:
-              - ./start-server.sh
-
             env:
               DB_HOSTNAME: "immich-db-rw.media.svc.cluster.local"
               DB_DATABASE_NAME: "immich"
@@ -58,7 +54,7 @@ spec:
                   secretKeyRef:
                     name: immich-db-app
                     key: password
-              SERVER_PORT: &port 3001
+              IMMICH_PORT: &port 3001
 
             envFrom:
               - secretRef:

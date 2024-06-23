@@ -21,7 +21,7 @@ spec:
     enablePodMonitor: true
   bootstrap:
     recovery:
-      source: &previousCluster immich-db-v3
+      source: &previousCluster immich-db-v4
       database: &app immich
       owner: *app
   postgresql:
@@ -37,7 +37,7 @@ spec:
         maxParallel: 8
       destinationPath: "s3://postgres"
       endpointURL: "http://minio.storage.svc.cluster.local:9000"
-      serverName: immich-db-v4
+      serverName: immich-db-v5
       s3Credentials:
         accessKeyId:
           name: immich-s3-secret

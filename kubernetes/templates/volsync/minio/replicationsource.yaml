@@ -19,3 +19,5 @@ spec:
     pruneIntervalDays: 14
     retain:
       daily: 14
+    moverPodLabels:
+      vpn.home.arpa/enabled: "false"

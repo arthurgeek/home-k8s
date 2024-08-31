@@ -1,0 +1,120 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2beta2
+kind: HelmRelease
+metadata:
+  name: downloads-gateway
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: pod-gateway
+      version: 6.5.1
+      interval: 30m
+      sourceRef:
+        kind: HelmRepository
+        name: angelnu
+        namespace: flux-system
+
+  values:
+    image:
+      repository: ghcr.io/angelnu/pod-gateway
+      tag: v1.10.0
+
+    DNS: 172.16.1.1
+
+    service:
+      vpn:
+        enabled: true
+        type: LoadBalancer
+        annotations:
+          io.cilium/lb-ipam-ips: "192.168.1.225"
+        externalTrafficPolicy: Cluster
+        ports:
+          shadowsocks:
+            enabled: true
+            port: 8388
+          vxlan:
+            enabled: true
+            port: 4789
+            protocol: UDP
+
+    addons:
+      vpn:
+        enabled: true
+        type: gluetun
+        gluetun:
+          image:
+            repository: ghcr.io/qdm12/gluetun
+            tag: v3.39.0@sha256:2f011a9aca767af62008d879eefcbc80a8645bd4fd4466ab312cc941cb658ad1
+        networkPolicy:
+          enabled: false
+
+        env:
+          - name: VPN_SERVICE_PROVIDER
+            value: nordvpn
+          - name: VPN_TYPE
+            value: wireguard
+          - name: VPN_INTERFACE
+            value: wg0
+          - name: FIREWALL
+            value: "off"
+          - name: DOT
+            value: "off"
+          - name: SHADOWSOCKS
+            value: "on"
+          - name: WIREGUARD_PRIVATE_KEY
+            valueFrom:
+              secretKeyRef:
+                name: downloads-gateway-secret
+                key: WIREGUARD_PRIVATE_KEY
+          - name: SERVER_HOSTNAMES
+            valueFrom:
+              secretKeyRef:
+                name: downloads-gateway-secret
+                key: SERVER_HOSTNAMES
+        resources:
+          requests:
+            cpu: 10m
+            memory: 78M
+          limits:
+            memory: 128M
+        securityContext:
+          capabilities:
+            add:
+              - NET_ADMIN
+
+      netshoot:
+        enabled: true
+        resources:
+          requests:
+            cpu: 10m
+            memory: 10M
+          limits:
+            memory: 65M
+
+    podAnnotations:
+      reloader.stakater.com/auto: "true"
+
+    routed_namespaces:
+      - downloads
+
+    settings:
+      NOT_ROUTED_TO_GATEWAY_CIDRS: 10.0.0.0/8 192.168.0.0/16
+      VPN_BLOCK_OTHER_TRAFFIC: true
+      VPN_INTERFACE: wg0
+      VPN_LOCAL_CIDRS: 10.0.0.0/8 192.168.0.0/16
+      VPN_TRAFFIC_PORT: "51820"
+      VXLAN_ID: 43
+      VXLAN_PORT: 4789
+      VXLAN_IP_NETWORK: 172.16.1
+
+    webhook:
+      gatewayAnnotation: vpn.home.arpa/enabled
+      gatewayDefault: true
+      gatewayLabel: vpn.home.arpa/enabled
+      namespaceSelector:
+        type: label
+        label: vpn.home.arpa/routed-gateway
+      image:
+        repository: ghcr.io/angelnu/gateway-admision-controller
+        tag: v3.10.0@sha256:a8ed630613de277244dfe203cd11d05905d7eeba8d8c41e399b02ee9a847b2f5

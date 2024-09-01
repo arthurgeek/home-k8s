@@ -1,0 +1,165 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2beta2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: &app qbittorrent
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: app-template
+      version: 3.2.1
+      sourceRef:
+        kind: HelmRepository
+        name: bjw-s
+        namespace: flux-system
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      strategy: rollback
+      retries: 3
+
+  dependsOn:
+    - name: rook-ceph-cluster
+      namespace: rook-ceph
+    - name: volsync
+      namespace: volsync-system
+
+  values:
+    defaultPodOptions:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1030
+        runAsGroup: 100
+        fsGroup: 100
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile: { type: RuntimeDefault }
+
+    controllers:
+      qbittorrent:
+        type: statefulset
+        annotations:
+          reloader.stakater.com/auto: "true"
+        initContainers:
+          gluetun:
+            image:
+              repository: ghcr.io/qdm12/gluetun
+              # https://github.com/qdm12/gluetun/issues/2054
+              tag: latest@sha256:993fb3050840bdc620ea45bd73683fdfb05aa5a2f882cee3578169c691a0a3de
+            resources:
+              requests:
+                cpu: 10m
+                memory: 78M
+              limits:
+                memory: 128M
+            securityContext:
+              readOnlyRootFilesystem: false
+              runAsNonRoot: false
+              runAsUser: 0
+              capabilities:
+                add:
+                  - NET_ADMIN
+            env:
+              TZ: ${TIMEZONE}
+              VPN_SERVICE_PROVIDER: nordvpn
+              VPN_TYPE: wireguard
+              VPN_INTERFACE: wg0
+              DOT: off
+              DNS_KEEP_NAMESERVER: on
+              FIREWALL_INPUT_PORTS: "8080,9999"
+              FIREWALL_OUTBOUND_SUBNETS: "192.168.1.0/24,10.0.0.0/8"
+              HEALTH_SERVER_ADDRESS: ":9999"
+              VERSION_INFORMATION: off
+            envFrom:
+              - secretRef:
+                  name: gluetun-secret
+            restartPolicy: Always
+            probes:
+              liveness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /
+                    port: 9999
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /
+                    port: 9999
+                  initialDelaySeconds: 10
+                  periodSeconds: 10
+                  failureThreshold: 5
+
+        containers:
+          app:
+            env:
+              TZ: ${TIMEZONE}
+              QBITTORRENT__PORT: &port 8080
+              QBT_BitTorrent__Session__Interface: wg0
+              QBT_BitTorrent__Session__InterfaceAddress: 0.0.0.0
+              QBT_BitTorrent__Session__InterfaceName: wg0
+              QBT_Network__PortForwardingEnabled: "false"
+            image:
+              repository: ghcr.io/onedr0p/qbittorrent
+              tag: 4.6.6@sha256:5634593d1594ae6899b11ff6e9e9311e1aab0ed60170679150f175183e3a9364
+            resources:
+              requests:
+                memory: 2Gi
+                cpu: 20m
+            probes:
+              liveness: &probes
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /api/v2/app/version
+                    port: *port
+                  initialDelaySeconds: 30
+                  periodSeconds: 30
+                  timeoutSeconds: 10
+                  failureThreshold: 6
+              readiness: *probes
+              startup:
+                enabled: true
+                spec:
+                  failureThreshold: 30
+                  periodSeconds: 10
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities: { drop: ["ALL"] }
+
+    service:
+      app:
+        controller: *app
+        nameOverride: *app
+        ports:
+          http:
+            port: *port
+
+    ingress:
+      app:
+        className: internal
+        hosts:
+          - host: "{{ .Release.Name }}.${SECRET_DOMAIN}"
+            paths:
+              - path: /
+                pathType: Prefix
+                service:
+                  identifier: app
+                  port: http
+
+    persistence:
+      config:
+        existingClaim: config-qbittorrent
+      torrents:
+        existingClaim: torrents
+        globalMounts:
+          - path: /data/Downloads/torrents

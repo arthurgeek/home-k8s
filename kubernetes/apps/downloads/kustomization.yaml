@@ -9,5 +9,6 @@ resources:
   - ./data-pvc.yaml
   # Flux-Kustomizations
   - ./qbittorrent/ks.yaml
+  - ./flaresolverr/ks.yaml
   - ./radarr/ks.yaml
   - ./sonarr/ks.yaml

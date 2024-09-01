@@ -12,3 +12,4 @@ resources:
   - ./flaresolverr/ks.yaml
   - ./radarr/ks.yaml
   - ./sonarr/ks.yaml
+  - ./prowlarr/ks.yaml

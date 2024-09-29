@@ -5,12 +5,12 @@ kind: Kustomization
 resources:
   # Pre Flux-Kustomizations
   - ./namespace.yaml
-  - ./externalsecret.yaml
-  - ./data-pvc.yaml
+  # - ./externalsecret.yaml
+  # - ./data-pvc.yaml
   # Flux-Kustomizations
-  - ./qbittorrent/ks.yaml
-  - ./flaresolverr/ks.yaml
-  - ./radarr/ks.yaml
-  - ./sonarr/ks.yaml
-  - ./prowlarr/ks.yaml
-  - ./recyclarr/ks.yaml
+  # - ./qbittorrent/ks.yaml
+  # - ./flaresolverr/ks.yaml
+  # - ./radarr/ks.yaml
+  # - ./sonarr/ks.yaml
+  # - ./prowlarr/ks.yaml
+  # - ./recyclarr/ks.yaml

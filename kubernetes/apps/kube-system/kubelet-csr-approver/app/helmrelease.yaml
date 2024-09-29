@@ -20,9 +20,10 @@ spec:
     cleanupOnFail: true
     remediation:
       retries: 3
+  valuesFrom:
+    - kind: ConfigMap
+      name: kubelet-csr-approver-helm-values
   values:
-    providerRegex: ^(k8s-0|k8s-1|k8s-2)$
-    bypassDnsResolution: true
     metrics:
       enable: true
       serviceMonitor:

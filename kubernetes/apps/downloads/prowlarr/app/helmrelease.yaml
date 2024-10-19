@@ -48,7 +48,7 @@ spec:
             image:
               repository: ghcr.io/qdm12/gluetun
               # https://github.com/qdm12/gluetun/issues/2054
-              tag: latest@sha256:b51035be5a412fe4a5f27ff0cb4414dbb14f7505e038a2bfe0c05c48e837aed4
+              tag: latest@sha256:42ae9ce93313f177b7494af6c1828e831649f6c68f83d9c1417bcc0ce0335e9d
             resources:
               requests:
                 cpu: 10m

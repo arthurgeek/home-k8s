@@ -33,7 +33,7 @@ spec:
           app:
             image:
               repository: ghcr.io/buroa/qbtools
-              tag: v0.16.10
+              tag: v0.19.5
             env:
               TZ: ${TIMEZONE}
             args:
